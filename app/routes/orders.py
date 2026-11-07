@@ -33,8 +33,8 @@ def create_order(body: OrderIn, pool: Db2Pool = Depends(get_pool)):
     product_ids = sorted(wanted)
 
     with pool.connection() as conn:
-        queries.begin(conn)
         try:
+            queries.begin(conn)
             if not queries.customer_exists(conn, body.customer_id):
                 raise ApiError(
                     404, "customer_not_found", f"customer {body.customer_id} not found", customer_id=body.customer_id
