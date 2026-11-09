@@ -32,6 +32,10 @@ def create_order(body: OrderIn, pool: Db2Pool = Depends(get_pool)):
     # Lock rows in a consistent order.
     product_ids = sorted(wanted)
 
+    # The 'with' context manager ensures the connection is released in all code paths:
+    # - Success: released after exiting the block normally
+    # - Any exception: released via __exit__ after exception is handled
+    # This prevents connection leaks even when errors (e.g., ApiError, DbError) are raised.
     with pool.connection() as conn:
         queries.begin(conn)
         try:
@@ -58,12 +62,16 @@ def create_order(body: OrderIn, pool: Db2Pool = Depends(get_pool)):
                 queries.decrement_inventory(conn, pid, wanted[pid])
             queries.commit(conn)
         except BaseException:
+            # Rollback on any exception (error, API error, etc.) to ensure transaction consistency.
+            # Catch rollback failures to prevent masking the original error.
             try:
                 queries.rollback(conn)
             except Exception:
                 pass
             raise
         finally:
+            # Always restore autocommit mode, even if rollback fails. This ensures the connection
+            # is in a clean state before being returned to the pool.
             try:
                 queries.end(conn)
             except Exception:
