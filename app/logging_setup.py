@@ -60,6 +60,9 @@ def setup_logging(level: str = "INFO", log_file: str | None = None) -> None:
 
     WatchedFileHandler reopens the file if it is moved or truncated, so external logrotate works.
     """
+    # Prevent logging handler failures from propagating exceptions (e.g., during file rotation)
+    logging.raiseExceptions = False
+    
     if log_file:
         handler = logging.handlers.WatchedFileHandler(log_file, encoding="utf-8")
     else:
